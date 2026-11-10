@@ -1,0 +1,201 @@
+aimrt:
+  log:
+    core_lvl: INFO # Trace/Debug/Info/Warn/Error/Fatal/Off
+    backends:
+      - type: console
+  module:
+    pkgs:
+      - path: ./libarm_control_pkg.so
+        disable_modules: []
+      - path: ./libros2_proxy_pkg.so
+        disable_modules: []
+    modules:
+      - name: ControlModule
+        log_lvl: INFO
+      - name: ROS2ProxyModule
+        log_lvl: INFO
+  executor:
+    executors:
+      - name: state_pub_executor
+        type: asio_thread
+      - name: task_pub_executor
+        type: asio_thread
+      - name: ros2_proxy_executor
+        type: asio_thread
+  channel:
+    backends:
+      - type: local # 官方支持local后端
+      - type: zenoh
+        options:
+          pub_topics_options:
+            - topic_name: "(.*)"
+              shm_enabled: false
+      - type: ros2
+        options:
+          pub_topics_options:
+            - topic_name: "(.*)"
+              use_serialized: false
+              qos:
+                history: keep_last
+                depth: 1
+                reliability: best_effort
+                durability: volatile
+                lifespan: -1
+                deadline: -1
+                liveliness: automatic
+                liveliness_lease_duration: -1
+          sub_topics_options:
+            - topic_name: "(.*)"
+              use_serialized: false
+              qos:
+                history: keep_last
+                depth: 10
+                reliability: reliable
+                durability: volatile
+                lifespan: -1
+                deadline: -1
+                liveliness: automatic
+                liveliness_lease_duration: -1
+    pub_topics_options:
+      # 内部话题（ControlModule / ROS2ProxyModule 之间）：local
+      - topic_name: "/genisys/joint_cmd"
+        enable_backends: [local, zenoh]
+        enable_filters: []
+      - topic_name: "/genisys/joint_state"
+        enable_backends: [local, zenoh]
+        enable_filters: []
+      - topic_name: "/genisys/tcp_pose"
+        enable_backends: [local, zenoh]
+        enable_filters: []
+      - topic_name: "/genisys/tcp_pose_expected"
+        enable_backends: [local, zenoh]
+        enable_filters: []
+      - topic_name: "/genisys/flange_pose"
+        enable_backends: [local, zenoh]
+        enable_filters: []
+      - topic_name: "/genisys/task_context"
+        enable_backends: [local, zenoh]
+        enable_filters: []
+      # 对外 ROS2 话题（ROS2ProxyModule 发布）：只走 ros2
+      - topic_name: "/joint_states"
+        enable_backends: [ros2]
+        enable_filters: []
+      - topic_name: "/tcp_pose"
+        enable_backends: [ros2]
+        enable_filters: []
+      - topic_name: "/tcp_pose_expected"
+        enable_backends: [ros2]
+        enable_filters: []
+      - topic_name: "/flange_pose"
+        enable_backends: [ros2]
+        enable_filters: []
+    sub_topics_options:
+      # 进程内话题：local
+      - topic_name: "/genisys/joint_cmd"
+        enable_backends: [local]
+        enable_filters: []
+      - topic_name: "/genisys/joint_state"
+        enable_backends: [local]
+        enable_filters: []
+  plugin:
+    plugins:
+      - name: net_plugin
+        path: ./libaimrt_net_plugin.so
+        options:
+          thread_num: 2
+          http_options:
+            listen_ip: 127.0.0.1
+            listen_port: 50080
+      - name: zenoh_plugin
+        path: ./libaimrt_zenoh_plugin.so
+        options:
+          native_cfg_path: ./cfg/zenoh_native_config.json5
+      - name: ros2_plugin
+        path: ./libaimrt_ros2_plugin.so
+        options:
+          node_name: genisys_aubo
+          executor_type: MultiThreaded
+          executor_thread_num: 2
+          auto_initialize_logging: false # 避免依赖可写的 ~/.ros/log
+  rpc:
+    backends:
+      - type: http
+      - type: ros2
+        options:
+          clients_options:
+            - func_name: "(.*)/(.*)/(.*)/(.*)"
+              qos:
+                history: keep_last
+                depth: 10
+                reliability: reliable
+                durability: volatile
+                lifespan: -1
+                deadline: -1
+                liveliness: automatic
+                liveliness_lease_duration: -1
+              remapping_rule: "/genisys/srv/{4}"
+          servers_options:
+            - func_name: "(.*)/(.*)/(.*)/(.*)"
+              qos:
+                history: keep_last
+                depth: 10
+                reliability: reliable
+                durability: volatile
+                lifespan: -1
+                deadline: -1
+                liveliness: automatic
+                liveliness_lease_duration: -1
+              remapping_rule: "/genisys/srv/{4}"
+    clients_options:
+      - func_name: "(.*)"
+        enable_backends: []
+        enable_filters: []
+    servers_options:
+      - func_name: "(.*)"
+        enable_backends: [http, ros2]
+        enable_filters: []
+
+# Module custom configuration
+ControlModule:
+  aubo_ip: 127.0.0.1
+  aubo_rpc_port: 30004
+  aubo_rtde_port: 30010
+  aubo_user: aubo
+  aubo_password: "123456"
+  request_timeout_ms: 1000
+  rtde_frequency: 200
+  tcp_offset: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  joint_names: ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
+  state_publish_executor_name: state_pub_executor
+  task_publish_executor_name: task_pub_executor
+  state_publish_frequency: 200
+  task_publish_frequency: 50
+  fk_pos_tolerance: 0.0001
+  fk_rot_tolerance: 0.0001
+  topic_pub_joint_cmd: /genisys/joint_cmd
+  topic_pub_joint_state: /genisys/joint_state
+  topic_pub_tcp_pose: /genisys/tcp_pose
+  topic_pub_tcp_pose_expected: /genisys/tcp_pose_expected
+  topic_pub_flange_pose: /genisys/flange_pose
+  topic_pub_task_context: /genisys/task_context
+
+ROS2ProxyModule:
+  publish_executor_name: ros2_proxy_executor
+  publish_frequency: 100
+  bridges:
+    - type: joint_state
+      sub_topic: /genisys/joint_state
+      pub_topic: /joint_states
+      enable: true
+    - type: pose_stamped
+      sub_topic: /genisys/tcp_pose
+      pub_topic: /tcp_pose
+      enable: true
+    - type: pose_stamped
+      sub_topic: /genisys/tcp_pose_expected
+      pub_topic: /tcp_pose_expected
+      enable: false
+    - type: pose_stamped
+      sub_topic: /genisys/flange_pose
+      pub_topic: /flange_pose
+      enable: true

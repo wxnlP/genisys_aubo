@@ -1,0 +1,8 @@
+.vscode/
+.cache/
+.idea/
+_deps/
+build/
+cmake-build*/
+aubo_sdk/
+docs/

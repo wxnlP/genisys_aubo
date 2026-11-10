@@ -1,0 +1,7 @@
+Joint[] position
+float64 r
+float64 v
+float64 a
+---
+Error error
+MoveResult result
