@@ -46,8 +46,8 @@ TIMEOUT = 30.0
 DEFAULT_POSE = (0.551, -0.124, 0.419, 149.8749, 50.6804, -14.6719)
 
 # 关节运动参数 (度制)
-DEFAULT_VEL_DEG = 60.0      # AUBO example_movej.py
-DEFAULT_ACC_DEG = 80.0      # AUBO example_movej.py
+DEFAULT_VEL_DEG = 30.0      # AUBO example_movej.py
+DEFAULT_ACC_DEG = 40.0      # AUBO example_movej.py
 
 
 # ---------------------------------------------------------------------------

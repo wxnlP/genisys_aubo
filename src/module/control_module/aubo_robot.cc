@@ -98,7 +98,7 @@ bool AuboRobot::Connect(const Config& cfg) {
   }
 
   const std::vector<std::string> names_list = {
-      "R1_actual_q",        "R1_actual_qd",        "R1_joint_torque",
+      "R1_actual_q",        "R1_actual_qd",        "R1_joint_control_output",
       "R1_actual_TCP_pose", "R1_actual_tool_pose", "R1_target_TCP_pose",
       "R1_target_q"};
   const int chanel = rtde_client_->setTopic(false, names_list, cfg.rtde_freq_hz, 1);

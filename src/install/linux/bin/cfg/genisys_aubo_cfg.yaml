@@ -80,11 +80,11 @@ aimrt:
 
 # Module custom configuration
 ControlModule:
-  aubo_ip: 127.0.0.1
+  aubo_ip: 192.168.3.149
   aubo_rpc_port: 30004
   aubo_rtde_port: 30010
   aubo_user: aubo
-  aubo_password: "123456"
+  aubo_password: "123456" 
   request_timeout_ms: 1000
   rtde_frequency: 200
   tcp_offset: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

@@ -40,8 +40,8 @@ TIMEOUT = 30.0
 # 默认参数 (单位: 度 / 度每秒)，home 位置附近的一个姿态
 # ---------------------------------------------------------------------------
 DEFAULT_JOINTS_DEG = [0.0, -15.0, 100.0, 25.0, 90.0, 0.0]
-DEFAULT_VEL_DEG = 60.0      # AUBO example_movej.py
-DEFAULT_ACC_DEG = 80.0      # AUBO example_movej.py
+DEFAULT_VEL_DEG = 30.0      # AUBO example_movej.py
+DEFAULT_ACC_DEG = 40.0      # AUBO example_movej.py
 JOINT_COUNT = 6
 
 

@@ -46,8 +46,8 @@ DEFAULT_POSE = (0.551, -0.124, 0.419, 149.8749, 50.6804, -14.6719)
 POSE_FIELDS = ("x", "y", "z", "roll", "pitch", "yaw")
 
 # MoveL 运动参数
-DEFAULT_V = 0.25    # m/s   AUBO example_movel.py
-DEFAULT_A = 1.2     # m/s^2 AUBO example_movel.py
+DEFAULT_V = 0.1    # m/s   AUBO example_movel.py
+DEFAULT_A = 0.5     # m/s^2 AUBO example_movel.py
 
 
 # ---------------------------------------------------------------------------
