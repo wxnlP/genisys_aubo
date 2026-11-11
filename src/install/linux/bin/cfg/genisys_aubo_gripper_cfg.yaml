@@ -102,7 +102,7 @@ aimrt:
 
 # Module custom configuration
 ControlModule:
-  aubo_ip: 127.0.0.1
+  aubo_ip: 192.168.3.149
   aubo_rpc_port: 30004
   aubo_rtde_port: 30010
   aubo_user: aubo
