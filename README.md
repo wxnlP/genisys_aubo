@@ -4,13 +4,13 @@
 
 ### 下载 aubo C++ sdk
 
-切换到`src`目录：
+切换到`control_module`目录：
 
 ```bash
-cd src
+cd src/module/control_module
 ```
 
-下载 sdk 包：https://download.aubo-robotics.cn/sdk/
+下载 sdk 包（https://download.aubo-robotics.cn/sdk/）：
 
 - x86-64
 
@@ -39,47 +39,35 @@ mv aubo_sdk/lib/libstdc++.so.6 aubo_sdk/lib/libstdc++.so.6.bak
 
 ### 编译
 
-目录：
+期望目录应如下：
 
 ```
 .
-├── aubo_sdk
-│   ├── bin
-│   ├── include
-│   ├── lib
-│   ├── share
-│   └── VERSION
-├── CMakeLists.txt
-├── main.cc
-└── README.md
+├── control_module
+│   ├── aubo_robot.cc
+│   ├── aubo_robot.h
+│   ├── aubo_sdk
+│   ├── CMakeLists.txt
+│   ├── control_module.cc
+│   └── control_module.h
+├── genisys-core
+│   ├── actuator
+│   ├── arm_control
+│   └── CMakeLists.txt
+├── gripper_module
+│   ├── CMakeLists.txt
+│   ├── gripper_module.cc
+│   └── gripper_module.h
+└── ros2_proxy_module
+    ├── CMakeLists.txt
+    ├── ros2_proxy_module.cc
+    └── ros2_proxy_module.h
 ```
 
-`CMakeLists.txt`文件：
-
-```cmake
-cmake_minimum_required(VERSION 3.28)
-
-project(genisys_aubo_test LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/aubo_sdk")
-
-find_package(aubo_sdk REQUIRED)
-
-# 链接示例
-add_executable(main main.cc)
-target_link_libraries(main PRIVATE aubo_sdk::aubo_sdk)
-```
-
-编译：
+回到根目录，编译：
 
 ```bash
-cmake -S. -Bbuild
-cmake --build build
+./build.sh
 ```
-
 
 
