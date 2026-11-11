@@ -121,6 +121,33 @@ bool ControlModule::Initialize(aimrt::CoreRef core) {
       topic_pub_flange_pose_ = cfg["topic_pub_flange_pose"].as<std::string>();
       topic_pub_task_context_ = cfg["topic_pub_task_context"].as<std::string>();
 
+      if (cfg["gripper"]) {
+        const auto gripper_cfg = cfg["gripper"];
+        gripper_controller_ = std::make_unique<GripperController>(
+            gripper_cfg["MIT"]["stiffness"].as<double>(),
+            gripper_cfg["MIT"]["damping"].as<double>());
+        gripper_controller_->SetMaxRange(gripper_cfg["max_range"].as<double>());
+
+        GripperController::ForceControlConfig force_cfg;
+        if (gripper_cfg["force_control"]) {
+          const auto fc = gripper_cfg["force_control"];
+          force_cfg.contact_ticks = fc["contact_ticks"].as<int>();
+          force_cfg.hold_damping = fc["hold_damping"].as<double>();
+          force_cfg.ramp_rate = fc["ramp_rate"].as<double>();
+          force_cfg.min_position_ratio = fc["min_position_ratio"].as<double>();
+          force_cfg.max_target_torque = fc["max_target_torque"].as<double>();
+        }
+        gripper_controller_->SetForceControlConfig(force_cfg);
+
+        gripper_executor_name_ = cfg["gripper_cmd_executor_name"].as<std::string>();
+        topic_pub_gripper_cmd_ = cfg["topic_pub_gripper_cmd"].as<std::string>();
+        topic_sub_gripper_state_ = cfg["topic_sub_gripper_state"].as<std::string>();
+        if (cfg["gripper_cmd_frequency"]) {
+          gripper_cmd_frequency_ = cfg["gripper_cmd_frequency"].as<double>();
+        }
+        gripper_controller_->SetSampleFrequency(gripper_cmd_frequency_);
+      }
+
       robot_.SetLogger(GetLogger());
       if (!robot_.Connect(robot_cfg)) {
         AIMRT_ERROR("AUBO 连接失败，模块初始化终止");
@@ -134,6 +161,21 @@ bool ControlModule::Initialize(aimrt::CoreRef core) {
 
     state_executor_ = ctx_ptr_->CreateExecutor(state_executor_name_);
     task_executor_ = ctx_ptr_->CreateExecutor(task_executor_name_);
+
+    if (gripper_controller_) {
+      gripper_executor_ = ctx_ptr_->CreateExecutor(gripper_executor_name_);
+      pub_gripper_cmd_ =
+          ctx_ptr_->CreatePublisher<JointCommandArray>(topic_pub_gripper_cmd_);
+      sub_gripper_state_ = ctx_ptr_->CreateSubscriber<JointStateArray>(
+          topic_sub_gripper_state_, [this](std::shared_ptr<const JointStateArray> msg) {
+            if (msg->joints_size() < 1) {
+              return;
+            }
+            const auto& joint = msg->joints(0);
+            gripper_controller_->SetGripperState(joint.position(), joint.velocity(),
+                                                 joint.effort());
+          });
+    }
 
     pub_joint_cmd_ = ctx_ptr_->CreatePublisher<JointCommandArray>(topic_pub_joint_cmd_);
     pub_joint_state_ = ctx_ptr_->CreatePublisher<JointStateArray>(topic_pub_joint_state_);
@@ -200,6 +242,23 @@ bool ControlModule::Initialize(aimrt::CoreRef core) {
       return aimrt::rpc::Status();
     });
 
+    auto gripper_pos = ctx_ptr_->CreateServer<genisys_msgs::srv::GripperPosCoServer>();
+    gripper_pos->GripperPos.ServeInline([this](aimrt::rpc::ContextRef,
+                                               const genisys_msgs::srv::GripperPos_Request& req,
+                                               genisys_msgs::srv::GripperPos_Response& rsp) {
+      HandleGripperPos(req, rsp);
+      return aimrt::rpc::Status();
+    });
+
+    auto gripper_force = ctx_ptr_->CreateServer<genisys_msgs::srv::GripperForceCoServer>();
+    gripper_force->GripperForce.ServeInline(
+        [this](aimrt::rpc::ContextRef,
+               const genisys_msgs::srv::GripperForce_Request& req,
+               genisys_msgs::srv::GripperForce_Response& rsp) {
+          HandleGripperForce(req, rsp);
+          return aimrt::rpc::Status();
+        });
+
   } catch (const std::exception& e) {
     AIMRT_ERROR("ControlModule 初始化失败: {}", e.what());
     return false;
@@ -218,6 +277,12 @@ bool ControlModule::Start() {
     ctx_ptr_->LetMe();
     TaskPublishLoop();
   });
+  if (gripper_controller_) {
+    gripper_executor_.Execute([this]() {
+      ctx_ptr_->LetMe();
+      GripperCmdLoop();
+    });
+  }
   AIMRT_INFO("ControlModule 已启动");
   return true;
 }
@@ -407,6 +472,103 @@ void ControlModule::HandleIKCheck(const genisys_msgs::srv::IKCheck_Request& req,
 
   rsp.error.code = 0;
   rsp.error.msg = "IKCheck succeeded";
+}
+
+void ControlModule::HandleGripperPos(const genisys_msgs::srv::GripperPos_Request& req,
+                                     genisys_msgs::srv::GripperPos_Response& rsp) {
+  if (!gripper_controller_) {
+    AIMRT_ERROR("收到 GripperPos 请求，但当前配置未启用夹爪");
+    rsp.error.code = -1;
+    rsp.error.msg = "Gripper is not configured";
+    return;
+  }
+  const bool ret = gripper_controller_->PosControl(req.position, req.velocity,
+                                                   req.acceleration, req.effort);
+  if (ret) {
+    gripper_controller_->WaitForCompletion();
+    rsp.error.code = 0;
+    rsp.error.msg = "GripperPos succeeded";
+  } else {
+    rsp.error.code = -1;
+    rsp.error.msg = "GripperPos failed";
+  }
+}
+
+void ControlModule::HandleGripperForce(const genisys_msgs::srv::GripperForce_Request& req,
+                                       genisys_msgs::srv::GripperForce_Response& rsp) {
+  if (!gripper_controller_) {
+    AIMRT_ERROR("收到 GripperForce 请求，但当前配置未启用夹爪");
+    rsp.error.code = -1;
+    rsp.error.msg = "Gripper is not configured";
+    return;
+  }
+
+  GripperController::ForceControlParams params;
+  params.approach_velocity = req.approach_velocity;
+  params.approach_accel = req.approach_accel;
+  params.switch_velocity = req.switch_velocity;
+  params.target_torque = req.target_torque;
+  params.closed_release = req.closed_release;
+
+  const int ret = gripper_controller_->ForceControl(params);
+  if (ret == 0) {
+    rsp.error.code = rsp.OK;
+    rsp.error.msg = "GripperForce succeeded";
+  } else if (ret == -1) {
+    rsp.error.code = rsp.FAILED;
+    rsp.error.msg = "GripperForce failed";
+  } else if (ret == -2) {
+    rsp.error.code = rsp.EMPTY;
+    rsp.error.msg = "GripperForce Empty (object not grasped)";
+  }
+}
+
+void ControlModule::GripperCmdLoop() {
+  const auto period =
+      std::chrono::nanoseconds(static_cast<int64_t>(1e9 / gripper_cmd_frequency_));
+  auto next = std::chrono::steady_clock::now();
+
+  while (ctx_ptr_->Running()) {
+    GripperController::GripperCommand cmd;
+    if (gripper_controller_->GetGripperCommand(cmd) == -1) {
+      // 无规划轨迹 — 复用上一帧指令保持
+      if (last_gripper_cmd_.has_value()) {
+        cmd = *last_gripper_cmd_;
+      } else {
+        double current_position = 0.0;
+        if (gripper_controller_->GetCurrentPosition(current_position) != 0) {
+          next += period;
+          std::this_thread::sleep_until(next);
+          continue;
+        }
+        cmd.position = current_position;
+        cmd.velocity = 0.0;
+        cmd.effort = 0.0;
+        last_gripper_cmd_ = cmd;
+      }
+    } else {
+      last_gripper_cmd_ = cmd;
+    }
+
+    JointCommandArray msg;
+    auto* header = msg.mutable_header();
+    header->set_time_stamp(NowNs());
+    header->set_frame_id("base_link");
+
+    auto* joint = msg.add_joints();
+    joint->set_name("gripper");
+    joint->set_position(cmd.position);
+    joint->set_velocity(cmd.velocity);
+    joint->set_effort(cmd.effort);
+    joint->set_stiffness(cmd.stiffness);
+    joint->set_damping(cmd.damping);
+
+    ctx_ptr_->LetMe();
+    pub_gripper_cmd_.Publish(msg);
+
+    next += period;
+    std::this_thread::sleep_until(next);
+  }
 }
 
 }  // namespace genisys_aubo::control_module

@@ -57,7 +57,7 @@ aimrt:
                 liveliness: automatic
                 liveliness_lease_duration: -1
     pub_topics_options:
-      # 内部话题（ControlModule / ROS2ProxyModule 之间）：local
+      # 内部话题：本进程内走 local，同时发布到 zenoh 供外部订阅
       - topic_name: "/genisys/joint_cmd"
         enable_backends: [local, zenoh]
         enable_filters: []

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,6 +27,7 @@
 #include "pose.pb.h"
 
 #include "control_module/aubo_robot.h"
+#include "gripper_controller.h"
 
 using JointStateArray = aimrt::protocols::sensor::JointStateArray;
 using JointCommandArray = aimrt::protocols::sensor::JointCommandArray;
@@ -52,6 +54,7 @@ class ControlModule : public aimrt::ModuleBase {
 
   void StatePublishLoop();
   void TaskPublishLoop();
+  void GripperCmdLoop();
 
   void HandleMoveJ(const genisys_msgs::srv::MoveJ_Request& req,
                    genisys_msgs::srv::MoveJ_Response& rsp);
@@ -67,6 +70,10 @@ class ControlModule : public aimrt::ModuleBase {
                         genisys_msgs::srv::MoveLMulti_Response& rsp);
   void HandleIKCheck(const genisys_msgs::srv::IKCheck_Request& req,
                      genisys_msgs::srv::IKCheck_Response& rsp);
+  void HandleGripperPos(const genisys_msgs::srv::GripperPos_Request& req,
+                        genisys_msgs::srv::GripperPos_Response& rsp);
+  void HandleGripperForce(const genisys_msgs::srv::GripperForce_Request& req,
+                          genisys_msgs::srv::GripperForce_Response& rsp);
 
  private:
   aimrt::CoreRef core_;
@@ -87,8 +94,17 @@ class ControlModule : public aimrt::ModuleBase {
   std::string state_executor_name_;
   std::string task_executor_name_;
 
+  // 夹爪（未配置时为 nullptr）
+  std::unique_ptr<GripperController> gripper_controller_;
+  std::string gripper_executor_name_;
+  std::string topic_pub_gripper_cmd_;
+  std::string topic_sub_gripper_state_;
+  double gripper_cmd_frequency_{200.0};
+  std::optional<GripperController::GripperCommand> last_gripper_cmd_;
+
   aimrt::executor::ExecutorRef state_executor_;
   aimrt::executor::ExecutorRef task_executor_;
+  aimrt::executor::ExecutorRef gripper_executor_;
 
   aimrt::context::res::Publisher<JointCommandArray> pub_joint_cmd_;
   aimrt::context::res::Publisher<JointStateArray> pub_joint_state_;
@@ -96,6 +112,8 @@ class ControlModule : public aimrt::ModuleBase {
   aimrt::context::res::Publisher<Pose> pub_tcp_pose_expected_;
   aimrt::context::res::Publisher<Pose> pub_flange_pose_;
   aimrt::context::res::Publisher<TaskContextMsg> pub_task_context_;
+  aimrt::context::res::Publisher<JointCommandArray> pub_gripper_cmd_;
+  aimrt::context::res::Subscriber<JointStateArray> sub_gripper_state_;
 };
 
 }  // namespace genisys_aubo::control_module

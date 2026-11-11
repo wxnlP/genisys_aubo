@@ -1,0 +1,7 @@
+gripper:
+  name: "geniarm_gripper"
+  protocol:
+    port: "can0"
+  motor_id: 0x07
+  feedback_id: 0x17 # 必须 = motor_id + 0x10
+  model: "DM4310" # DM4310 / DM4340P

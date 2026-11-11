@@ -30,7 +30,7 @@ target_include_directories(
   ${CUR_TARGET_NAME}
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>)
 
-list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../aubo_sdk")
+list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/aubo_sdk")
 
 find_package(aubo_sdk REQUIRED)
 # Set link libraries of target
@@ -44,6 +44,7 @@ target_link_libraries(
          aimrt::protocols::sensor_pb_gencode
          ${CUR_SUPERIOR_NAMESPACE}::protocols::genisys_pb_gencode
          ${CUR_SUPERIOR_NAMESPACE}::protocols::genisys_msgs_rpc_gencode
+         ${CUR_SUPERIOR_NAMESPACE}::arm_control
          aubo_sdk::aubo_sdk)
 
 # Set test of target
