@@ -7,11 +7,16 @@ add_subdirectory(protocols)
 add_subdirectory(module/genisys-core)
 add_subdirectory(module/control_module)
 add_subdirectory(module/gripper_module)
-add_subdirectory(module/ros2_proxy_module)
+
+if(GENISYS_BUILD_ROS2_PROXY)
+  add_subdirectory(module/ros2_proxy_module)
+endif()
 
 # pkg
 add_subdirectory(pkg/arm_control_pkg)
-add_subdirectory(pkg/ros2_proxy_pkg)
+if(GENISYS_BUILD_ROS2_PROXY)
+  add_subdirectory(pkg/ros2_proxy_pkg)
+endif()
 add_subdirectory(pkg/gripper_pkg)
 
 # install
