@@ -175,7 +175,7 @@ request_timeout_ms: 1000
 tcp_offset: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ```
 
-顺序为`(x,y,z,rx,ry,rz)`，位置 + ZYX 欧拉角。其中，位置单位是 m，欧拉角是 rad。
+顺序为`(x,y,z,rx,ry,rz)`，位置 + ZYX 欧拉角。其中，位置单位是 m，欧拉角单位是度（deg），代码中会转换为弧度下发给控制器。
 
 - `ros2 proxy ` 配置
 

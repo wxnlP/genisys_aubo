@@ -95,6 +95,9 @@ bool ControlModule::Initialize(aimrt::CoreRef core) {
       }
       if (cfg["tcp_offset"]) {
         robot_cfg.tcp_offset = cfg["tcp_offset"].as<std::vector<double>>();
+        for (size_t i = 3; i < robot_cfg.tcp_offset.size() && i < 6; ++i) {
+          robot_cfg.tcp_offset[i] = robot_cfg.tcp_offset[i] * 3.14159265358979323846 / 180.0;
+        }
       }
       if (cfg["fk_pos_tolerance"]) {
         robot_cfg.fk_pos_tolerance = cfg["fk_pos_tolerance"].as<double>();
