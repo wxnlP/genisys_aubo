@@ -97,6 +97,15 @@ aimrt:
       - topic_name: "/genisys/joint_state"
         enable_backends: [local]
         enable_filters: []
+      - topic_name: "/genisys/tcp_pose"
+        enable_backends: [local]
+        enable_filters: []
+      - topic_name: "/genisys/tcp_pose_expected"
+        enable_backends: [local]
+        enable_filters: []
+      - topic_name: "/genisys/flange_pose"
+        enable_backends: [local]
+        enable_filters: []
   plugin:
     plugins:
       - name: net_plugin

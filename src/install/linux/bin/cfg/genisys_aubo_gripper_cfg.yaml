@@ -109,7 +109,7 @@ ControlModule:
   aubo_password: "123456"
   request_timeout_ms: 1000
   rtde_frequency: 200
-  tcp_offset: [0.0, 0.0, 0.14, 90.0, -90.0, 0.0]
+  tcp_offset: [0.0, 0.0, 0.14, -90.0, -90.0, 0.0]
   joint_names: ["shoulder_joint", "upper_arm_joint", "elbow_joint", "wrist1_joint", "wrist2_joint", "wrist3_joint"]
   state_publish_executor_name: state_pub_executor
   task_publish_executor_name: task_pub_executor
