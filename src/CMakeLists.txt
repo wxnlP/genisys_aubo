@@ -39,7 +39,6 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CUR_INSTALL_SOURCE_DIR}/bin ${CMAKE_BINARY_DIR}
   DEPENDS aimrt::runtime::main
           genisys_aubo::arm_control_pkg
-          genisys_aubo::ros2_proxy_pkg
           genisys_aubo::gripper_pkg)
 
 
